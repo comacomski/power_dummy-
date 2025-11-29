@@ -1,7 +1,7 @@
 obj-m += dummy_ps.o
 
 KDIR := /lib/modules/$(shell uname -r)/build
-PWD  := $(shell pwd)
+PWD  := $(shell pwd)/power/supply/
 
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
