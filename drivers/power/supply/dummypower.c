@@ -133,3 +133,8 @@ static void dummy_ps_exit(void)
 
 module_init(dummy_ps_init);
 module_exit(dummy_ps_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Mico Antonic");
+MODULE_DESCRIPTION("Dummy Power Supply driver example");
+
