@@ -1,6 +1,6 @@
 obj-m += dummypower.o
 
-KDIR := /home/mico/linux/linux_mainline
+KDIR := ../../../../../linux_mainline
 PWD  := $(shell pwd)
 
 all:
