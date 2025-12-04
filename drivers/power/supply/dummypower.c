@@ -6,9 +6,12 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/acpi.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
 
 #define DUMMY_NAME "Dummy_Driver"
 
+// MiAn check what can go in driver struct
 static enum power_supply_property dummy_prop[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -23,6 +26,7 @@ static enum power_supply_property dummy_prop[] = {
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,	
 };
+struct timer_list dummy_timer;
 
 static int dummy_get_prop(struct power_supply *psy, enum power_supply_property psp, union power_supply_propval *val)
 {
@@ -48,12 +52,12 @@ static int dummy_prop_writeable(struct power_supply *psy, enum power_supply_prop
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
     case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
         return 1;  // writable properties
-
     default:
         return 0;  // read-only
     }
 }
 
+// MiAn check what can go in driver struct
 static struct power_supply_desc dummy_ps_desc = {
 	.name = DUMMY_NAME,
 	.type = POWER_SUPPLY_TYPE_UNKNOWN,
@@ -64,13 +68,18 @@ static struct power_supply_desc dummy_ps_desc = {
 	.property_is_writeable = dummy_prop_writeable,
 
 };
-
 static struct power_supply_config dummy_ps_config = {};
-
 static struct power_supply *dummy_ps;
+
+static void timer_callback(struct timer_list *timer)
+{
+	pr_err("Dummy Timer works");
+	mod_timer(&dummy_timer, jiffies + secs_to_jiffies(1));
+}
 
 static int dummy_probe(struct platform_device *pdev)
 {
+	// MiAn proper error handling
 	int ret = 0;
 	dev_info(&pdev->dev, "Module probe called.\n");
 	dummy_ps = devm_power_supply_register(&pdev->dev, &dummy_ps_desc, &dummy_ps_config);
@@ -80,15 +89,20 @@ static int dummy_probe(struct platform_device *pdev)
 		ret = PTR_ERR(dummy_ps);
 		goto reg_err;
 	}
-	dev_err(&pdev->dev, "Probe success! \n");	
+	dev_err(&pdev->dev, "Probe success! \n");
+	
+	timer_setup(&dummy_timer, timer_callback, 0);
+	mod_timer(&dummy_timer, jiffies + secs_to_jiffies(1));
 reg_err:
 	return ret;
 }
 static void dummy_remove(struct platform_device *pdev)
 {
 	pr_err("Dummy module remove called.\n");
+	timer_delete_sync(&dummy_timer);
 }
 
+// MiAn check what can go in driver struct
 static const struct of_device_id dummy_of[] = {
 	{ .compatible = "dt_string"},
 	{}
@@ -127,6 +141,9 @@ static int dummy_ps_init(void)
 }
 static void dummy_ps_exit(void)
 {
+	// MiAn check return values
+    	platform_device_unregister(pdev);
+    	platform_driver_unregister(&dummy_drv);
 	pr_err("Dummy module exit \n");
 	
 }
