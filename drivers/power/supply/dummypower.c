@@ -8,6 +8,7 @@
 #include <linux/acpi.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
+#include <linux/workqueue.h>
 
 #define DUMMY_NAME "Dummy_Driver"
 
@@ -26,7 +27,8 @@ static enum power_supply_property dummy_prop[] = {
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,	
 };
-struct timer_list dummy_timer;
+static struct timer_list dummy_timer;
+static struct work_struct dummy_work;
 
 static int dummy_get_prop(struct power_supply *psy, enum power_supply_property psp, union power_supply_propval *val)
 {
@@ -74,7 +76,13 @@ static struct power_supply *dummy_ps;
 static void timer_callback(struct timer_list *timer)
 {
 	pr_err("Dummy Timer works");
+	schedule_work(&dummy_work);
 	mod_timer(&dummy_timer, jiffies + secs_to_jiffies(1));
+}
+
+static void dummy_working(struct work_struct *work)
+{
+	pr_err("Work queue called\n");
 }
 
 static int dummy_probe(struct platform_device *pdev)
@@ -92,6 +100,7 @@ static int dummy_probe(struct platform_device *pdev)
 	dev_err(&pdev->dev, "Probe success! \n");
 	
 	timer_setup(&dummy_timer, timer_callback, 0);
+	INIT_WORK(&dummy_work, dummy_working);
 	mod_timer(&dummy_timer, jiffies + secs_to_jiffies(1));
 reg_err:
 	return ret;
@@ -133,7 +142,6 @@ static int dummy_ps_init(void)
 {
 	pr_err("Dummy module init started...\n");
 	platform_driver_register(&dummy_drv);
-
 	// hack, delete
 	pdev = platform_device_register_simple(DUMMY_NAME, -1, NULL, 0);
 	
