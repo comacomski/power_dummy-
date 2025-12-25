@@ -14,14 +14,32 @@
 
 #define DUMMY_NAME "Dummy_Driver"
 
+struct dummy_psy_props {
+    int status;
+    int health;
+    bool present;
+    bool online;
+
+    int constant_charge_current;
+    int constant_charge_current_max;
+    int constant_charge_voltage;
+    int constant_charge_voltage_max;
+
+    int scope;
+    int charge_term_current;
+
+    const char *model_name;
+    const char *manufacturer;
+};
+
 struct dummy_data {
 	struct timer_list dummy_timer;
 	struct work_struct dummy_work;
 	struct platform_device *dummy_pdev;
 	struct power_supply_config dummy_ps_config;
 	struct power_supply *dummy_ps;
+	struct dummy_psy_props dummy_vals;
 };
-
 
 static const enum power_supply_property dummy_prop[] = {
 	POWER_SUPPLY_PROP_STATUS,
@@ -88,6 +106,7 @@ static void timer_callback(struct timer_list *timer)
 
 static void dummy_working(struct work_struct *work)
 {
+	// MiAn proper log leves everywhere
 	pr_err("Work queue called\n");	
 }
 
@@ -113,6 +132,20 @@ static int dummy_probe(struct platform_device *pdev)
 		goto alloc_reg_err;
 	}
 	dev_err(&pdev->dev, "Probe success! \n");
+
+	/* Initial values for DUMMY PS */
+	dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_UNKNOWN;
+	dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_UNKNOWN;
+	dummy_d->dummy_vals.present = true;
+	dummy_d->dummy_vals.online = true;
+	dummy_d->dummy_vals.constant_charge_current = 1500000; /* uA */
+	dummy_d->dummy_vals.constant_charge_current_max = 3000000; /* uA */
+	dummy_d->dummy_vals.constant_charge_voltage = 4200000; /* uV */
+	dummy_d->dummy_vals.constant_charge_voltage_max = 4400000; /* uV */
+	dummy_d->dummy_vals.scope = POWER_SUPPLY_SCOPE_SYSTEM;
+	dummy_d->dummy_vals.charge_term_current = 100000; /* uA */
+	dummy_d->dummy_vals.model_name = "Edu123";
+	dummy_d->dummy_vals.manufacturer = "MiAn_electronics";
 	
 	timer_setup(&dummy_d->dummy_timer, timer_callback, 0);
 	INIT_WORK(&dummy_d->dummy_work, dummy_working);
