@@ -11,6 +11,7 @@
 #include <linux/workqueue.h>
 #include <linux/container_of.h>
 #include <linux/array_size.h>
+#include <linux/property.h>
 
 #define DUMMY_NAME "Dummy_Driver"
 
@@ -35,7 +36,7 @@ struct dummy_psy_props {
 struct dummy_data {
 	struct timer_list dummy_timer;
 	struct work_struct dummy_work;
-	struct platform_device *dummy_pdev;
+	struct platform_device *dummy_platform_dev;
 	struct power_supply_config dummy_ps_config;
 	struct power_supply *dummy_ps;
 	struct dummy_psy_props dummy_vals;
@@ -60,7 +61,50 @@ static int dummy_get_prop(struct power_supply *psy, enum power_supply_property p
 {
 
 	pr_err("dummy get prop called; val=%s; int val = %d; prop = %d\n", val->strval, val->intval, psp);
-	val->intval = 0;
+	struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy); 
+	/* MiAn: get dummy vals from psy struct */
+	switch(psp)
+	{
+	case POWER_SUPPLY_PROP_STATUS:
+ 		val->intval = dummy_d->dummy_vals.status;
+	break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		val->intval = dummy_d->dummy_vals.health;
+	break;
+	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = dummy_d->dummy_vals.present;
+	break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = dummy_d->dummy_vals.online;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		val->intval = dummy_d->dummy_vals.constant_charge_current;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+		val->intval = dummy_d->dummy_vals.constant_charge_current_max;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
+		val->intval = dummy_d->dummy_vals.constant_charge_voltage;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
+		val->intval = dummy_d->dummy_vals.constant_charge_voltage_max;
+	break;
+	case POWER_SUPPLY_PROP_SCOPE:
+		val->intval = dummy_d->dummy_vals.scope;
+	break;
+	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
+		val->intval = dummy_d->dummy_vals.charge_term_current;
+	break;
+	case POWER_SUPPLY_PROP_MODEL_NAME:
+		val->strval = dummy_d->dummy_vals.model_name;
+	break;
+	case POWER_SUPPLY_PROP_MANUFACTURER:
+		val->strval = dummy_d->dummy_vals.manufacturer;
+	break;
+	default:
+		pr_err("not available config choosen!\n");
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -79,9 +123,9 @@ static int dummy_prop_writeable(struct power_supply *psy, enum power_supply_prop
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
     case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
-        return 1;  // writable properties
+        return 1;  /* writable properties */
     default:
-        return 0;  // read-only
+        return 0;  /* read-only */
     }
 }
 
@@ -106,13 +150,13 @@ static void timer_callback(struct timer_list *timer)
 
 static void dummy_working(struct work_struct *work)
 {
-	// MiAn proper log leves everywhere
+	/* MiAn proper log levels everywhere */
 	pr_err("Work queue called\n");	
 }
 
 static int dummy_probe(struct platform_device *pdev)
 {
-	// MiAn proper error handling
+	/* MiAn proper error handling */
 	int ret = 0;
 	dev_info(&pdev->dev, "Module probe called.\n");
 	struct dummy_data *dummy_d = devm_kzalloc(&pdev->dev, sizeof(struct dummy_data), GFP_KERNEL);
@@ -121,6 +165,10 @@ static int dummy_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "Error while accocating memory: %d\n", ret);
 		return -ENOMEM;
 	}
+
+	dummy_d->dummy_ps_config.drv_data = dummy_d;
+	dummy_d->dummy_ps_config.fwnode = dev_fwnode(&pdev->dev);	
+
 	platform_set_drvdata(pdev, (void *)dummy_d);
 
 	dummy_d->dummy_ps = devm_power_supply_register(&pdev->dev, &dummy_ps_desc, &dummy_d->dummy_ps_config);
@@ -131,8 +179,8 @@ static int dummy_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Error while dev_power_supply_register:%d\n", ret);
 		goto alloc_reg_err;
 	}
-	dev_err(&pdev->dev, "Probe success! \n");
-
+	dev_info(&pdev->dev, "Probe success! \n");
+	
 	/* Initial values for DUMMY PS */
 	dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_UNKNOWN;
 	dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_UNKNOWN;
@@ -150,6 +198,8 @@ static int dummy_probe(struct platform_device *pdev)
 	timer_setup(&dummy_d->dummy_timer, timer_callback, 0);
 	INIT_WORK(&dummy_d->dummy_work, dummy_working);
 	mod_timer(&dummy_d->dummy_timer, jiffies + secs_to_jiffies(1));
+
+/* MiAn proper error handling */
 
 alloc_reg_err:
 	return ret;
@@ -214,4 +264,5 @@ module_exit(dummy_ps_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Mico Antonic");
 MODULE_DESCRIPTION("Dummy Power Supply driver example");
+
 
