@@ -12,7 +12,7 @@
 #include <linux/container_of.h>
 #include <linux/array_size.h>
 #include <linux/property.h>
-
+#include <linux/mutex.h>
 #define DUMMY_NAME "Dummy_Driver"
 
 struct dummy_psy_props {
@@ -40,6 +40,7 @@ struct dummy_data {
 	struct power_supply_config dummy_ps_config;
 	struct power_supply *dummy_ps;
 	struct dummy_psy_props dummy_vals;
+	struct mutex dummy_mutex;
 };
 
 static const enum power_supply_property dummy_prop[] = {
@@ -60,9 +61,10 @@ static const enum power_supply_property dummy_prop[] = {
 static int dummy_get_prop(struct power_supply *psy, enum power_supply_property psp, union power_supply_propval *val)
 {
 
-	pr_err("dummy get prop called; val=%s; int val = %d; prop = %d\n", val->strval, val->intval, psp);
+	pr_info("dummy get prop called on prop = %d\n", psp);
 	struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy); 
 	/* MiAn: get dummy vals from psy struct */
+	mutex_lock(&dummy_d->dummy_mutex);
 	switch(psp)
 	{
 	case POWER_SUPPLY_PROP_STATUS:
@@ -102,21 +104,47 @@ static int dummy_get_prop(struct power_supply *psy, enum power_supply_property p
 		val->strval = dummy_d->dummy_vals.manufacturer;
 	break;
 	default:
+		mutex_unlock(&dummy_d->dummy_mutex);
 		pr_err("not available config choosen!\n");
 		return -EINVAL;
 	}
+	mutex_unlock(&dummy_d->dummy_mutex);
 	return 0;
 }
 
 static int dummy_set_prop(struct power_supply *psy, enum power_supply_property psp, const union power_supply_propval *val)
 {
-	pr_err("dummy set prop called!\n");
+	pr_debug("dummy set prop: %d to value: %d\n", psp, val->intval);
+	struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy);
+	mutex_lock(&dummy_d->dummy_mutex);
+	switch(psp) {
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		dummy_d->dummy_vals.constant_charge_current = val->intval;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+		dummy_d->dummy_vals.constant_charge_current_max = val->intval;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
+		dummy_d->dummy_vals.constant_charge_voltage = val->intval;
+	break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
+		dummy_d->dummy_vals.constant_charge_voltage_max = val->intval;
+	break;
+	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
+		dummy_d->dummy_vals.charge_term_current = val->intval;
+	break;
+	default:
+		mutex_unlock(&dummy_d->dummy_mutex);
+		pr_err("%d is not writable!\n", psp);
+		return -EINVAL;
+	}
+	mutex_unlock(&dummy_d->dummy_mutex);
 	return 0;
 }
 
 static int dummy_prop_writeable(struct power_supply *psy, enum power_supply_property psp)
 {
-    pr_err("DUMMY_WRITEABLE\n");
+    pr_debug("dummy_prop_writeable called!\n");
     switch (psp) {
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
@@ -142,16 +170,59 @@ static const struct power_supply_desc dummy_ps_desc = {
 
 static void timer_callback(struct timer_list *timer)
 {
-	pr_err("Dummy Timer works");
+	/* MiAn use dev prints everywhere in the code */
+	pr_debug("Dummy Timer works");
 	struct dummy_data *dummy_d = container_of(timer, struct dummy_data, dummy_timer);
 	mod_timer(timer, jiffies + secs_to_jiffies(1));
-	schedule_work(&dummy_d->dummy_work);
+schedule_work(&dummy_d->dummy_work);
 }
 
 static void dummy_working(struct work_struct *work)
 {
 	/* MiAn proper log levels everywhere */
-	pr_err("Work queue called\n");	
+	pr_debug("Work queue called\n");
+	struct dummy_data *dummy_d = (struct dummy_data *)container_of(work, struct dummy_data, dummy_work);
+	
+	mutex_lock(&dummy_d->dummy_mutex);
+	switch(dummy_d->dummy_vals.status) {
+	case POWER_SUPPLY_STATUS_UNKNOWN:
+		dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_CHARGING;
+		dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_GOOD;
+		mutex_unlock(&dummy_d->dummy_mutex);
+		pr_info("Start of charging!\n");
+		mutex_lock(&dummy_d->dummy_mutex);	
+	break;
+	case POWER_SUPPLY_STATUS_CHARGING:
+		dummy_d->dummy_vals.online = true;
+		dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_GOOD;
+		dummy_d->dummy_vals.constant_charge_current += 100000; // increment
+		if(dummy_d->dummy_vals.constant_charge_current >= dummy_d->dummy_vals.constant_charge_current_max) {
+            		dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_DISCHARGING;	
+			mutex_unlock(&dummy_d->dummy_mutex);
+			pr_info("End of charging, going to discharging!\n");			
+			mutex_lock(&dummy_d->dummy_mutex);
+		}
+	break;
+	case POWER_SUPPLY_STATUS_DISCHARGING:
+		dummy_d->dummy_vals.online = false;
+		dummy_d->dummy_vals.constant_charge_current -= 100000; // decrement
+		if(dummy_d->dummy_vals.constant_charge_current <= 0)
+		{
+			dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_CHARGING;
+			mutex_unlock(&dummy_d->dummy_mutex);
+			pr_info("Discharged fully, going to charging\n!");
+			mutex_lock(&dummy_d->dummy_mutex);
+		}
+	break;
+	case POWER_SUPPLY_STATUS_NOT_CHARGING:
+	case POWER_SUPPLY_STATUS_FULL:
+	default:
+		mutex_unlock(&dummy_d->dummy_mutex);
+		pr_err("Unsupported state: %d\n", dummy_d->dummy_vals.status);
+		mutex_lock(&dummy_d->dummy_mutex);
+	break;
+	}
+	mutex_unlock(&dummy_d->dummy_mutex);
 }
 
 static int dummy_probe(struct platform_device *pdev)
@@ -195,6 +266,7 @@ static int dummy_probe(struct platform_device *pdev)
 	dummy_d->dummy_vals.model_name = "Edu123";
 	dummy_d->dummy_vals.manufacturer = "MiAn_electronics";
 	
+	mutex_init(&dummy_d->dummy_mutex);	
 	timer_setup(&dummy_d->dummy_timer, timer_callback, 0);
 	INIT_WORK(&dummy_d->dummy_work, dummy_working);
 	mod_timer(&dummy_d->dummy_timer, jiffies + secs_to_jiffies(1));
@@ -251,7 +323,7 @@ static int dummy_ps_init(void)
 }
 static void dummy_ps_exit(void)
 {
-	// MiAn check return values
+	/* MiAn check return values */
     	platform_device_unregister(pdev);
     	platform_driver_unregister(&dummy_drv);
 	pr_err("Dummy module exit \n");
