@@ -117,7 +117,7 @@ static int dummy_get_prop(struct power_supply *psy, enum power_supply_property p
 static int dummy_set_prop(struct power_supply *psy, enum power_supply_property psp, const union power_supply_propval *val)
 {
 	struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy);
-	dev_debug(&dummy_d->dummy_platform_dev->dev, "dummy set prop: %d to value: %d\n", psp, val->intval);
+	dev_dbg(&dummy_d->dummy_platform_dev->dev, "dummy set prop: %d to value: %d\n", psp, val->intval);
 
 	mutex_lock(&dummy_d->dummy_mutex);
 	switch(psp) {
@@ -148,7 +148,7 @@ static int dummy_set_prop(struct power_supply *psy, enum power_supply_property p
 static int dummy_prop_writeable(struct power_supply *psy, enum power_supply_property psp)
 {
     struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy);
-    dev_debug(&dummy_d->dummy_platform_dev->dev, "dummy_prop_writeable called!\n");
+    dev_dbg(&dummy_d->dummy_platform_dev->dev, "dummy_prop_writeable called!\n");
 
     switch (psp) {
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
@@ -176,7 +176,7 @@ static const struct power_supply_desc dummy_ps_desc = {
 static void timer_callback(struct timer_list *timer)
 {
 	struct dummy_data *dummy_d = container_of(timer, struct dummy_data, dummy_timer);
-	dev_debug(&dummy_d->dummy_platform_dev->dev, "Dummy Timer works");
+	dev_dbg(&dummy_d->dummy_platform_dev->dev, "Dummy Timer works");
 
 	mod_timer(timer, jiffies + secs_to_jiffies(1));
 	schedule_work(&dummy_d->dummy_work);
@@ -185,7 +185,7 @@ static void timer_callback(struct timer_list *timer)
 static void dummy_working(struct work_struct *work)
 {
 	struct dummy_data *dummy_d = (struct dummy_data *)container_of(work, struct dummy_data, dummy_work);	
-	dev_debug(&dummy_d->dummy_platform_dev->dev, "Work queue called\n");
+	dev_dbg(&dummy_d->dummy_platform_dev->dev, "Work queue called\n");
 
 	mutex_lock(&dummy_d->dummy_mutex);
 	switch(dummy_d->dummy_vals.status) {
@@ -233,27 +233,19 @@ static int dummy_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	dev_info(&pdev->dev, "Module probe called.\n");
+
+	/* Allocate memory for private driver's data */
 	struct dummy_data *dummy_d = devm_kzalloc(&pdev->dev, sizeof(struct dummy_data), GFP_KERNEL);
 	if(!dummy_d)
 	{
-		dev_info(&pdev->dev, "Error while accocating memory: %d\n", ret);
+		dev_err(&pdev->dev, "Error while accocating memory.\n");
 		return -ENOMEM;
 	}
-
+	
+	/* Set private data and nodes structure */
 	dummy_d->dummy_ps_config.drv_data = dummy_d;
 	dummy_d->dummy_ps_config.fwnode = dev_fwnode(&pdev->dev);	
-
 	platform_set_drvdata(pdev, (void *)dummy_d);
-
-	dummy_d->dummy_ps = devm_power_supply_register(&pdev->dev, &dummy_ps_desc, &dummy_d->dummy_ps_config);
-	if(IS_ERR(dummy_d->dummy_ps))
-	{
-
-		ret = PTR_ERR(dummy_d->dummy_ps);
-		dev_err(&pdev->dev, "Error while dev_power_supply_register:%d\n", ret);
-		goto alloc_reg_err;
-	}
-	dev_info(&pdev->dev, "Probe success! \n");
 	
 	/* Initial values for DUMMY PS */
 	dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_UNKNOWN;
@@ -268,16 +260,26 @@ static int dummy_probe(struct platform_device *pdev)
 	dummy_d->dummy_vals.charge_term_current = 100000; /* uA */
 	dummy_d->dummy_vals.model_name = "Edu123";
 	dummy_d->dummy_vals.manufacturer = "MiAn_electronics";
-	
+
+	/* Register Dummy PS */	
+	dummy_d->dummy_ps = devm_power_supply_register(&pdev->dev, &dummy_ps_desc, &dummy_d->dummy_ps_config);
+	if(IS_ERR(dummy_d->dummy_ps))
+	{
+
+		ret = PTR_ERR(dummy_d->dummy_ps);
+		dev_err(&pdev->dev, "Error while dev_power_supply_register:%d\n", ret);
+		return ret;
+	}
+
+	/* Init, setup and start timer and work */
 	mutex_init(&dummy_d->dummy_mutex);	
 	timer_setup(&dummy_d->dummy_timer, timer_callback, 0);
 	INIT_WORK(&dummy_d->dummy_work, dummy_working);
 	mod_timer(&dummy_d->dummy_timer, jiffies + secs_to_jiffies(1));
 
-/* MiAn proper error handling */
+	dev_info(&pdev->dev, "Probe success! \n");
 
-alloc_reg_err:
-	return ret;
+	return 0;
 }
 static void dummy_remove(struct platform_device *pdev)
 {
@@ -326,7 +328,6 @@ static int dummy_ps_init(void)
 }
 static void dummy_ps_exit(void)
 {
-	/* MiAn check return values */
     	platform_device_unregister(pdev);
     	platform_driver_unregister(&dummy_drv);
 	pr_info("Dummy module exit \n");
