@@ -64,7 +64,7 @@ static int dummy_get_prop(struct power_supply *psy, enum power_supply_property p
 {
 
 	struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy); 
-	dev_info(&dummy_d->dummy_platform_dev->dev, "vdummy get prop called on prop = %d\n", psp);
+	dev_info(&dummy_d->dummy_platform_dev->dev, "get_prop called on prop = %d\n", psp);
 
 	mutex_lock(&dummy_d->dummy_mutex);
 	switch(psp)
@@ -184,7 +184,6 @@ static void timer_callback(struct timer_list *timer)
 
 static void dummy_working(struct work_struct *work)
 {
-	/* MiAn proper log levels everywhere */
 	struct dummy_data *dummy_d = (struct dummy_data *)container_of(work, struct dummy_data, dummy_work);	
 	dev_debug(&dummy_d->dummy_platform_dev->dev, "Work queue called\n");
 
@@ -200,7 +199,7 @@ static void dummy_working(struct work_struct *work)
 	case POWER_SUPPLY_STATUS_CHARGING:
 		dummy_d->dummy_vals.online = true;
 		dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_GOOD;
-		dummy_d->dummy_vals.constant_charge_current += 100000; // increment
+		dummy_d->dummy_vals.constant_charge_current += 100000;
 		if(dummy_d->dummy_vals.constant_charge_current >= dummy_d->dummy_vals.constant_charge_current_max) {
             		dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_DISCHARGING;	
 			mutex_unlock(&dummy_d->dummy_mutex);
@@ -210,12 +209,12 @@ static void dummy_working(struct work_struct *work)
 	break;
 	case POWER_SUPPLY_STATUS_DISCHARGING:
 		dummy_d->dummy_vals.online = false;
-		dummy_d->dummy_vals.constant_charge_current -= 100000; // decrement
+		dummy_d->dummy_vals.constant_charge_current -= 100000;
 		if(dummy_d->dummy_vals.constant_charge_current <= 0)
 		{
 			dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_CHARGING;
 			mutex_unlock(&dummy_d->dummy_mutex);
-			dev_info(&dummy_d->dummy_platform_dev->dev, "Discharged fully, going to charging\n!");
+			dev_info(&dummy_d->dummy_platform_dev->dev, "Discharged fully, going to charging!\n");
 			mutex_lock(&dummy_d->dummy_mutex);
 		}
 	break;
@@ -232,7 +231,6 @@ static void dummy_working(struct work_struct *work)
 
 static int dummy_probe(struct platform_device *pdev)
 {
-	/* MiAn proper error handling */
 	int ret = 0;
 	dev_info(&pdev->dev, "Module probe called.\n");
 	struct dummy_data *dummy_d = devm_kzalloc(&pdev->dev, sizeof(struct dummy_data), GFP_KERNEL);
