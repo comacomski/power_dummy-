@@ -15,21 +15,21 @@
 #define DUMMY_NAME "dummy_psy"
 
 struct dummy_psy_props {
-    int status;
-    int health;
-    bool present;
-    bool online;
+	int status;
+	int health;
+	bool present;
+	bool online;
 
-    int constant_charge_current;
-    int constant_charge_current_max;
-    int constant_charge_voltage;
-    int constant_charge_voltage_max;
+	int constant_charge_current;
+	int constant_charge_current_max;
+	int constant_charge_voltage;
+	int constant_charge_voltage_max;
 
-    int scope;
-    int charge_term_current;
+	int scope;
+	int charge_term_current;
 
-    const char *model_name;
-    const char *manufacturer;
+	const char *model_name;
+	const char *manufacturer;
 };
 
 struct dummy_data {
@@ -64,44 +64,43 @@ static int dummy_get_prop(struct power_supply *psy, enum power_supply_property p
 	dev_dbg(&dummy_d->dummy_platform_dev->dev, "get_prop called on prop = %d\n", psp);
 
 	mutex_lock(&dummy_d->dummy_mutex);
-	switch(psp)
-	{
+	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
- 		val->intval = dummy_d->dummy_vals.status;
-	break;
+		val->intval = dummy_d->dummy_vals.status;
+		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = dummy_d->dummy_vals.health;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = dummy_d->dummy_vals.present;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = dummy_d->dummy_vals.online;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		val->intval = dummy_d->dummy_vals.constant_charge_current;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		val->intval = dummy_d->dummy_vals.constant_charge_current_max;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		val->intval = dummy_d->dummy_vals.constant_charge_voltage;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
 		val->intval = dummy_d->dummy_vals.constant_charge_voltage_max;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_SCOPE:
 		val->intval = dummy_d->dummy_vals.scope;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
 		val->intval = dummy_d->dummy_vals.charge_term_current;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_MODEL_NAME:
 		val->strval = dummy_d->dummy_vals.model_name;
-	break;
+		break;
 	case POWER_SUPPLY_PROP_MANUFACTURER:
 		val->strval = dummy_d->dummy_vals.manufacturer;
-	break;
+		break;
 	default:
 		mutex_unlock(&dummy_d->dummy_mutex);
 		dev_err(&dummy_d->dummy_platform_dev->dev, "not available config choosen!\n");
@@ -117,27 +116,27 @@ static int dummy_set_prop(struct power_supply *psy, enum power_supply_property p
 	dev_dbg(&dummy_d->dummy_platform_dev->dev, "dummy set prop: %d to value: %d\n", psp, val->intval);
 
 	mutex_lock(&dummy_d->dummy_mutex);
-	switch(psp) {
+	switch (psp) {
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		dummy_d->dummy_vals.constant_charge_current = val->intval;
 		power_supply_changed(dummy_d->dummy_ps);
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		dummy_d->dummy_vals.constant_charge_current_max = val->intval;
 		power_supply_changed(dummy_d->dummy_ps);
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		dummy_d->dummy_vals.constant_charge_voltage = val->intval;
 		power_supply_changed(dummy_d->dummy_ps);
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
 		dummy_d->dummy_vals.constant_charge_voltage_max = val->intval;
 		power_supply_changed(dummy_d->dummy_ps);
-	break;
+		break;
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
 		dummy_d->dummy_vals.charge_term_current = val->intval;
 		power_supply_changed(dummy_d->dummy_ps);
-	break;
+		break;
 	default:
 		mutex_unlock(&dummy_d->dummy_mutex);
 		dev_err(&dummy_d->dummy_platform_dev->dev, "%d is not writable!\n", psp);
@@ -149,29 +148,30 @@ static int dummy_set_prop(struct power_supply *psy, enum power_supply_property p
 
 static int dummy_prop_writeable(struct power_supply *psy, enum power_supply_property psp)
 {
-    struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy);
-    dev_dbg(&dummy_d->dummy_platform_dev->dev, "dummy_prop_writeable called for: %d\n", psp);
+	struct dummy_data *dummy_d = (struct dummy_data *)power_supply_get_drvdata(psy);
 
-    switch (psp) {
-    case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
-    case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-    case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
-    case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
-    case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
-        return 1;  /* writable properties */
-    default:
-        return 0;  /* read-only */
-    }
+	dev_dbg(&dummy_d->dummy_platform_dev->dev, "dummy_prop_writeable called for: %d\n", psp);
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
+	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
+		return 1;  /* writable properties */
+	default:
+		return 0;  /* read-only */
+	}
 }
 
 static const struct power_supply_desc dummy_ps_desc = {
-    .name = DUMMY_NAME,
-    .type = POWER_SUPPLY_TYPE_UNKNOWN,
-    .properties = dummy_prop,
-    .num_properties = ARRAY_SIZE(dummy_prop),
-    .get_property = dummy_get_prop,
-    .set_property = dummy_set_prop,
-    .property_is_writeable = dummy_prop_writeable,
+	.name = DUMMY_NAME,
+	.type = POWER_SUPPLY_TYPE_UNKNOWN,
+	.properties = dummy_prop,
+	.num_properties = ARRAY_SIZE(dummy_prop),
+	.get_property = dummy_get_prop,
+	.set_property = dummy_set_prop,
+	.property_is_writeable = dummy_prop_writeable,
 };
 
 
@@ -189,25 +189,25 @@ static void dummy_working(struct work_struct *work)
 	dev_dbg(&dummy_d->dummy_platform_dev->dev, "Work queue called\n");
 
 	mutex_lock(&dummy_d->dummy_mutex);
-	switch(dummy_d->dummy_vals.status) {
+	switch (dummy_d->dummy_vals.status) {
 	case POWER_SUPPLY_STATUS_UNKNOWN:
 		dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_CHARGING;
 		dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_GOOD;
 		mutex_unlock(&dummy_d->dummy_mutex);
 		dev_dbg(&dummy_d->dummy_platform_dev->dev, "Start of charging!\n");
 		mutex_lock(&dummy_d->dummy_mutex);	
-	break;
+		break;
 	case POWER_SUPPLY_STATUS_CHARGING:
 		dummy_d->dummy_vals.online = true;
 		dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_GOOD;
 		dummy_d->dummy_vals.constant_charge_current += 100000;
 		if(dummy_d->dummy_vals.constant_charge_current >= dummy_d->dummy_vals.constant_charge_current_max) {
-            		dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_DISCHARGING;	
+			dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_DISCHARGING;
 			mutex_unlock(&dummy_d->dummy_mutex);
 			dev_dbg(&dummy_d->dummy_platform_dev->dev, "End of charging, going to discharging!\n");
 			mutex_lock(&dummy_d->dummy_mutex);
 		}
-	break;
+		break;
 	case POWER_SUPPLY_STATUS_DISCHARGING:
 		dummy_d->dummy_vals.online = false;
 		dummy_d->dummy_vals.constant_charge_current -= 100000;
@@ -218,14 +218,14 @@ static void dummy_working(struct work_struct *work)
 			dev_dbg(&dummy_d->dummy_platform_dev->dev, "Discharged fully, going to charging!\n");
 			mutex_lock(&dummy_d->dummy_mutex);
 		}
-	break;
+		break;
 	case POWER_SUPPLY_STATUS_NOT_CHARGING:
 	case POWER_SUPPLY_STATUS_FULL:
 	default:
 		mutex_unlock(&dummy_d->dummy_mutex);
 		dev_err(&dummy_d->dummy_platform_dev->dev, "Unsupported state: %d\n", dummy_d->dummy_vals.status);
 		mutex_lock(&dummy_d->dummy_mutex);
-	break;
+		break;
 	}
 	power_supply_changed(dummy_d->dummy_ps);
 	mutex_unlock(&dummy_d->dummy_mutex);
@@ -238,19 +238,18 @@ static int dummy_probe(struct platform_device *pdev)
 
 	/* Allocate memory for private driver's data */
 	struct dummy_data *dummy_d = devm_kzalloc(&pdev->dev, sizeof(struct dummy_data), GFP_KERNEL);
-	if(!dummy_d)
-	{
+	if (!dummy_d) {
 		dev_err(&pdev->dev, "Error while accocating memory.\n");
 		return -ENOMEM;
 	}
-	
+
 	/* Set private data and nodes structure */
 	dummy_d->dummy_ps_config.drv_data = dummy_d;
 	dummy_d->dummy_ps_config.fwnode = dev_fwnode(&pdev->dev);	
 	platform_set_drvdata(pdev, (void *)dummy_d);
 	dummy_d->dummy_platform_dev = pdev;
 
-	
+
 	/* Initial values for DUMMY PS */
 	dummy_d->dummy_vals.status = POWER_SUPPLY_STATUS_UNKNOWN;
 	dummy_d->dummy_vals.health = POWER_SUPPLY_HEALTH_UNKNOWN;
@@ -267,8 +266,7 @@ static int dummy_probe(struct platform_device *pdev)
 
 	/* Register Dummy PS */	
 	dummy_d->dummy_ps = devm_power_supply_register(&pdev->dev, &dummy_ps_desc, &dummy_d->dummy_ps_config);
-	if(IS_ERR(dummy_d->dummy_ps))
-	{
+	if (IS_ERR(dummy_d->dummy_ps)) {
 
 		ret = PTR_ERR(dummy_d->dummy_ps);
 		dev_err(&pdev->dev, "Error while dev_power_supply_register:%d\n", ret);
@@ -300,8 +298,8 @@ static const struct of_device_id dummy_of[] = {
 MODULE_DEVICE_TABLE(of, dummy_of);
 
 static const struct acpi_device_id dummy_acpi[] = {
-    { "ABC1234", 0 },
-    { }
+	{ "ABC1234", 0 },
+	{ }
 };
 MODULE_DEVICE_TABLE(acpi, dummy_acpi);
 
@@ -314,7 +312,7 @@ struct platform_driver dummy_drv = {
 		.of_match_table = dummy_of,
 		.acpi_match_table = ACPI_PTR(dummy_acpi),
 	},
-	
+
 };
 
 /* MiAn: testing purposes, delete */
@@ -327,15 +325,15 @@ static int dummy_ps_init(void)
 
 	/* MiAn: testing purposes, delete */
 	pdev = platform_device_register_simple(DUMMY_NAME, -1, NULL, 0);
-	
+
 	return 0;
 }
 static void dummy_ps_exit(void)
 {
-    	platform_device_unregister(pdev);
-    	platform_driver_unregister(&dummy_drv);
+	platform_device_unregister(pdev);
+	platform_driver_unregister(&dummy_drv);
 	pr_info("Dummy module exit \n");
-	
+
 }
 
 module_init(dummy_ps_init);
